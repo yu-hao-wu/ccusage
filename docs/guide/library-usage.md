@@ -41,10 +41,10 @@ Use the cost calculation utilities to work with token costs:
 ```typescript
 import { calculateTotals, getTotalTokens } from 'ccusage/calculate-cost';
 
-// Calculate totals from usage data
-const totals = calculateTotals(usageData);
+// Assume 'usageEntries' is an array of usage data objects
+const totals = calculateTotals(usageEntries);
 
-// Get total tokens from usage entries
+// Get total tokens from the same entries
 const totalTokens = getTotalTokens(usageEntries);
 ```
 

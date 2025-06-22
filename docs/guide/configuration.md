@@ -290,8 +290,9 @@ ls -la ~/.config/claude/projects/
 # Verify environment variable
 echo $CLAUDE_CONFIG_DIR
 
-# Test with explicit path
-ccusage daily --path /path/to/claude/projects
+# Test with explicit environment variable
+export CLAUDE_CONFIG_DIR="/path/to/claude/projects"
+ccusage daily
 ```
 
 #### Permission Errors
