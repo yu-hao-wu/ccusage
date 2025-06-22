@@ -1,6 +1,6 @@
 import type { Args } from 'gunshi';
 import type { CostMode, SortOrder } from './_types.ts';
-import { CostModes, dateSchema, SortOrders } from './_types.ts';
+import { CostModes, filterDateSchema, SortOrders } from './_types.ts';
 
 /**
  * Parses and validates a date argument in YYYYMMDD format
@@ -9,7 +9,7 @@ import { CostModes, dateSchema, SortOrders } from './_types.ts';
  * @throws TypeError if date format is invalid
  */
 function parseDateArg(value: string): string {
-	const result = dateSchema.safeParse(value);
+	const result = filterDateSchema.safeParse(value);
 	if (!result.success) {
 		throw new TypeError(result.error.issues[0]?.message ?? 'Invalid date format');
 	}

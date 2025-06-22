@@ -19,7 +19,7 @@ import { Hono } from 'hono/tiny';
 import { z } from 'zod';
 
 import { name, version } from '../package.json';
-import { dateSchema } from './_types.ts';
+import { filterDateSchema } from './_types.ts';
 import {
 	getDefaultClaudePath,
 	loadDailyUsageData,
@@ -51,8 +51,8 @@ export function createMcpServer({
 
 	// Define the schema for tool parameters
 	const parametersZodSchema = {
-		since: dateSchema.optional(),
-		until: dateSchema.optional(),
+		since: filterDateSchema.optional(),
+		until: filterDateSchema.optional(),
 		mode: z.enum(['auto', 'calculate', 'display']).default('auto').optional(),
 	};
 
