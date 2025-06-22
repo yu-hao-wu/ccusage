@@ -117,18 +117,29 @@ ccusage daily --json
 ```
 
 ```json
-[
-	{
-		"date": "2025-06-21",
-		"models": ["opus-4", "sonnet-4"],
-		"inputTokens": 277,
-		"outputTokens": 31456,
-		"cacheCreationTokens": 512,
-		"cacheReadTokens": 1024,
+{
+	"type": "daily",
+	"data": [
+		{
+			"date": "2025-06-21",
+			"models": ["claude-opus-4-20250514", "claude-sonnet-4-20250514"],
+			"inputTokens": 277,
+			"outputTokens": 31456,
+			"cacheCreationTokens": 512,
+			"cacheReadTokens": 1024,
+			"totalTokens": 33269,
+			"costUSD": 17.58
+		}
+	],
+	"summary": {
+		"totalInputTokens": 277,
+		"totalOutputTokens": 31456,
+		"totalCacheCreationTokens": 512,
+		"totalCacheReadTokens": 1024,
 		"totalTokens": 33269,
-		"totalCost": 17.58
+		"totalCostUSD": 17.58
 	}
-]
+}
 ```
 
 ### Offline Mode
