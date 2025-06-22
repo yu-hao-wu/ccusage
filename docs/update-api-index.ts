@@ -1,12 +1,12 @@
-#!/usr/bin/env node
+#!/usr/bin/env -S bun -b
 
 /**
  * Post-processing script to update API index with module descriptions
  */
 
-import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import process from 'node:process';
+import { $ } from 'bun';
 
 const descriptions = {
 	'\\_consts': 'Internal constants (not exported in public API)',
@@ -17,13 +17,13 @@ const descriptions = {
 	'logger': 'Logging utilities for the ccusage application',
 	'mcp': 'MCP (Model Context Protocol) server implementation',
 	'pricing-fetcher': 'Model pricing data fetcher for cost calculations',
-};
+} as const;
 
 async function updateApiIndex() {
 	const apiIndexPath = join(process.cwd(), 'api', 'index.md');
 
 	try {
-		let content = await readFile(apiIndexPath, 'utf-8');
+		let content = await Bun.file(apiIndexPath).text();
 
 		// Replace empty descriptions with actual ones
 		for (const [module, description] of Object.entries(descriptions)) {
@@ -37,8 +37,7 @@ async function updateApiIndex() {
 			content = content.replace(oldPattern, `| [${module}](${linkPath}) | ${description} |`);
 		}
 
-		await writeFile(apiIndexPath, content);
-		// eslint-disable-next-line no-console
+		await Bun.write(apiIndexPath, content);
 		console.log('✅ Updated API index with module descriptions');
 	}
 	catch (error) {
@@ -51,7 +50,7 @@ async function updateConstsPage() {
 	const constsIndexPath = join(process.cwd(), 'api', 'consts', 'index.md');
 
 	try {
-		let content = await readFile(constsIndexPath, 'utf-8');
+		let content = await Bun.file(constsIndexPath).text();
 
 		// Add note about constants not being exported (only if not already present)
 		const noteText = '> **Note**: These constants are internal implementation details and are not exported in the public API. They are documented here for reference purposes only.';
@@ -65,8 +64,7 @@ ${noteText}`;
 			content = content.replace(oldHeader, newHeader);
 		}
 
-		await writeFile(constsIndexPath, content);
-		// eslint-disable-next-line no-console
+		await Bun.write(constsIndexPath, content);
 		console.log('✅ Updated constants page with disclaimer');
 	}
 	catch (error) {
@@ -76,8 +74,9 @@ ${noteText}`;
 }
 
 async function main() {
+	await $`bun -b typedoc --excludeInternal`
 	await updateApiIndex();
 	await updateConstsPage();
 }
 
-main();
+await main();

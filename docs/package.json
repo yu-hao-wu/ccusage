@@ -8,13 +8,14 @@
     "build": "bun run docs:api && ROLLDOWN_OPTIONS_VALIDATION=loose vitepress build",
     "deploy": "wrangler deploy",
     "dev": "bun run docs:api && ROLLDOWN_OPTIONS_VALIDATION=loose vitepress dev",
-    "docs:api": "bun -b typedoc --excludeInternal && bun -b update-api-index.mjs",
+    "docs:api": "./update-api-index.ts",
     "preview": "vitepress preview"
   },
   "overrides": {
     "vite": "npm:rolldown-vite@latest"
   },
   "devDependencies": {
+    "@types/bun": "^1.2.17",
     "tinyglobby": "^0.2.14",
     "typedoc": "^0.28.5",
     "typedoc-plugin-markdown": "^4.6.4",
