@@ -2,7 +2,7 @@ import { serve } from '@hono/node-server';
 import { define } from 'gunshi';
 import { MCP_DEFAULT_PORT } from '../_consts.ts';
 import { sharedArgs } from '../_shared-args.ts';
-import { getDefaultClaudePath } from '../data-loader.ts';
+import { getClaudePaths } from '../data-loader.ts';
 import { logger } from '../logger.ts';
 import { createMcpHttpApp, createMcpServer, startMcpServerStdio } from '../mcp.ts';
 
@@ -35,8 +35,14 @@ export const mcpCommand = define({
 			logger.level = 0;
 		}
 
+		const paths = getClaudePaths();
+		if (paths.length === 0) {
+			logger.error('No valid Claude data directory found');
+			throw new Error('No valid Claude data directory found');
+		}
+
 		const options = {
-			claudePath: getDefaultClaudePath(),
+			claudePath: paths[0]!,
 			mode,
 		};
 

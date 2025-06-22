@@ -12,7 +12,7 @@ import {
 } from '../_session-blocks.ts';
 import { sharedCommandConfig } from '../_shared-args.ts';
 import { formatCurrency, formatModelsDisplayMultiline, formatNumber, ResponsiveTable } from '../_utils.ts';
-import { getDefaultClaudePath, loadSessionBlockData } from '../data-loader.ts';
+import { getClaudePaths, loadSessionBlockData } from '../data-loader.ts';
 import { log, logger } from '../logger.ts';
 import { startLiveMonitoring } from './_blocks.live.ts';
 
@@ -232,8 +232,14 @@ export const blocksCommand = define({
 			}
 
 			// Start live monitoring
+			const paths = getClaudePaths();
+			if (paths.length === 0) {
+				logger.error('No valid Claude data directory found');
+				throw new Error('No valid Claude data directory found');
+			}
+
 			await startLiveMonitoring({
-				claudePath: getDefaultClaudePath(),
+				claudePath: paths[0]!,
 				tokenLimit: parseTokenLimit(tokenLimitValue, maxTokensFromAll),
 				refreshInterval: refreshInterval * 1000, // Convert to milliseconds
 				sessionDurationHours: ctx.values.sessionLength,

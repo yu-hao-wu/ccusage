@@ -21,7 +21,7 @@ import { z } from 'zod';
 import { name, version } from '../package.json';
 import { filterDateSchema } from './_types.ts';
 import {
-	getDefaultClaudePath,
+	getClaudePaths,
 	loadDailyUsageData,
 	loadMonthlyUsageData,
 	loadSessionBlockData,
@@ -30,7 +30,7 @@ import {
 
 /** Default options for the MCP server */
 const defaultOptions = {
-	claudePath: getDefaultClaudePath(),
+	claudePath: getClaudePaths()[0] ?? '',
 } as const satisfies LoadOptions;
 
 /**
