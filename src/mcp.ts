@@ -28,6 +28,118 @@ import {
 	loadSessionData,
 } from './data-loader.ts';
 
+// Output schemas for structured responses
+const modelBreakdownSchema = z.object({
+	modelName: z.string(),
+	inputTokens: z.number(),
+	outputTokens: z.number(),
+	cacheCreationTokens: z.number().optional(),
+	cacheReadTokens: z.number().optional(),
+	cost: z.number(),
+});
+
+const dailyUsageSchema = z.object({
+	date: z.string(),
+	inputTokens: z.number(),
+	outputTokens: z.number(),
+	cacheCreationTokens: z.number().optional(),
+	cacheReadTokens: z.number().optional(),
+	totalTokens: z.number(),
+	totalCost: z.number(),
+	modelsUsed: z.array(z.string()),
+	modelBreakdowns: z.array(modelBreakdownSchema),
+});
+
+const sessionUsageSchema = z.object({
+	sessionId: z.string(),
+	inputTokens: z.number(),
+	outputTokens: z.number(),
+	cacheCreationTokens: z.number().optional(),
+	cacheReadTokens: z.number().optional(),
+	totalTokens: z.number(),
+	totalCost: z.number(),
+	lastActivity: z.string(),
+	modelsUsed: z.array(z.string()),
+	modelBreakdowns: z.array(modelBreakdownSchema),
+});
+
+const monthlyUsageSchema = z.object({
+	month: z.string(),
+	inputTokens: z.number(),
+	outputTokens: z.number(),
+	cacheCreationTokens: z.number().optional(),
+	cacheReadTokens: z.number().optional(),
+	totalTokens: z.number(),
+	totalCost: z.number(),
+	modelsUsed: z.array(z.string()),
+	modelBreakdowns: z.array(modelBreakdownSchema),
+});
+
+const blockUsageSchema = z.object({
+	id: z.string(),
+	startTime: z.string(),
+	endTime: z.string().optional(),
+	actualEndTime: z.string().optional(),
+	isActive: z.boolean(),
+	isGap: z.boolean(),
+	entries: z.number(),
+	tokenCounts: z.object({
+		inputTokens: z.number(),
+		outputTokens: z.number(),
+		cacheCreationInputTokens: z.number(),
+		cacheReadInputTokens: z.number(),
+	}),
+	totalTokens: z.number(),
+	costUSD: z.number(),
+	models: z.array(z.string()),
+	burnRate: z.number().nullable(),
+	projection: z.any().nullable(),
+});
+
+// Tool response schemas matching actual data format
+const dailyResponseSchema = {
+	daily: z.array(dailyUsageSchema),
+	totals: z.object({
+		totalInputTokens: z.number(),
+		totalOutputTokens: z.number(),
+		totalCacheCreationTokens: z.number().optional(),
+		totalCacheReadTokens: z.number().optional(),
+		totalTokens: z.number(),
+		totalCost: z.number(),
+		modelsUsed: z.array(z.string()),
+	}),
+};
+
+const sessionResponseSchema = {
+	sessions: z.array(sessionUsageSchema),
+	totals: z.object({
+		totalInputTokens: z.number(),
+		totalOutputTokens: z.number(),
+		totalCacheCreationTokens: z.number().optional(),
+		totalCacheReadTokens: z.number().optional(),
+		totalTokens: z.number(),
+		totalCost: z.number(),
+		modelsUsed: z.array(z.string()),
+	}),
+};
+
+const monthlyResponseSchema = {
+	monthly: z.array(monthlyUsageSchema),
+	totals: z.object({
+		totalInputTokens: z.number(),
+		totalOutputTokens: z.number(),
+		totalCacheCreationTokens: z.number().optional(),
+		totalCacheReadTokens: z.number().optional(),
+		totalTokens: z.number(),
+		totalCost: z.number(),
+		modelsUsed: z.array(z.string()),
+	}),
+};
+
+const blocksResponseSchema = {
+	blocks: z.array(blockUsageSchema),
+};
+
 /** Default options for the MCP server */
 const defaultOptions = {
 	claudePath: (() => {
@@ -68,6 +180,7 @@ export function createMcpServer({
 		{
 			description: 'Show usage report grouped by date',
 			inputSchema: parametersZodSchema,
+			outputSchema: dailyResponseSchema,
 		},
 		async (args) => {
 			const dailyData = await loadDailyUsageData({ ...args, claudePath });
@@ -78,6 +191,7 @@ export function createMcpServer({
 						text: JSON.stringify(dailyData, null, 2),
 					},
 				],
+				structuredContent: dailyData as unknown as { [x: string]: unknown },
 			};
 		},
 	);
@@ -88,6 +202,7 @@ export function createMcpServer({
 		{
 			description: 'Show usage report grouped by conversation session',
 			inputSchema: parametersZodSchema,
+			outputSchema: sessionResponseSchema,
 		},
 		async (args) => {
 			const sessionData = await loadSessionData({ ...args, claudePath });
@@ -98,6 +213,7 @@ export function createMcpServer({
 						text: JSON.stringify(sessionData, null, 2),
 					},
 				],
+				structuredContent: sessionData as unknown as { [x: string]: unknown },
 			};
 		},
 	);
@@ -108,6 +224,7 @@ export function createMcpServer({
 		{
 			description: 'Show usage report grouped by month',
 			inputSchema: parametersZodSchema,
+			outputSchema: monthlyResponseSchema,
 		},
 		async (args) => {
 			const monthlyData = await loadMonthlyUsageData({ ...args, claudePath });
@@ -118,6 +235,7 @@ export function createMcpServer({
 						text: JSON.stringify(monthlyData, null, 2),
 					},
 				],
+				structuredContent: monthlyData as unknown as { [x: string]: unknown },
 			};
 		},
 	);
@@ -128,6 +246,7 @@ export function createMcpServer({
 		{
 			description: 'Show usage report grouped by session billing blocks',
 			inputSchema: parametersZodSchema,
+			outputSchema: blocksResponseSchema,
 		},
 		async (args) => {
 			const blocksData = await loadSessionBlockData({ ...args, claudePath });
@@ -138,6 +257,7 @@ export function createMcpServer({
 						text: JSON.stringify(blocksData, null, 2),
 					},
 				],
+				structuredContent: blocksData as unknown as { [x: string]: unknown },
 			};
 		},
 	);
@@ -266,8 +386,12 @@ if (import.meta.vitest != null) {
 				expect(result.content).toHaveLength(1);
 
 				expect((result.content as any).at(0)).toHaveProperty('type', 'text');
-
 				expect((result.content as any).at(0)).toHaveProperty('text');
+
+				// Test structured content
+				expect(result).toHaveProperty('structuredContent');
+				expect((result as any).structuredContent).toHaveProperty('daily');
+				expect(Array.isArray((result as any).structuredContent.daily)).toBe(true);
 
 				const data = JSON.parse((result.content as any).at(0).text as string);
 				expect(Array.isArray(data)).toBe(true);
@@ -308,6 +432,12 @@ if (import.meta.vitest != null) {
 				expect(result.content).toHaveLength(1);
 				expect((result.content as any)[0]).toHaveProperty('type', 'text');
 				expect((result.content as any)[0]).toHaveProperty('text');
+
+				// Test structured content
+				expect(result).toHaveProperty('structuredContent');
+				expect((result as any).structuredContent).toHaveProperty('sessions');
+				expect((result as any).structuredContent).toHaveProperty('totals');
+				expect(Array.isArray((result as any).structuredContent.sessions)).toBe(true);
 
 				const data = JSON.parse((result.content as any)[0].text as string);
 				expect(Array.isArray(data)).toBe(true);
