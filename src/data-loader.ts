@@ -17,8 +17,7 @@ import type {
 	Version,
 } from './_types.ts';
 import { readFile } from 'node:fs/promises';
-import { homedir } from 'node:os';
-import path, { join } from 'node:path';
+import path from 'node:path';
 import process from 'node:process';
 import { toArray } from '@antfu/utils';
 import { unreachable } from '@core/errorutil';
@@ -117,41 +116,6 @@ export function getClaudePaths(): string[] {
 	}
 
 	return paths;
-}
-
-/**
- * Default path for Claude data directory
- * Uses environment variable CLAUDE_CONFIG_DIR if set, otherwise defaults to ~/.claude
- * @deprecated Use getClaudePaths() instead for multiple path support
- */
-export function getDefaultClaudePath(): string {
-	// Check environment variable first
-	const envPath = (process.env[CLAUDE_CONFIG_DIR_ENV] ?? '').trim();
-	if (envPath !== '') {
-		// For backward compatibility, only use the first path if multiple are provided
-		const firstPath = envPath.split(',')[0]?.trim();
-		if (firstPath != null && firstPath !== '') {
-			if (!isDirectorySync(firstPath)) {
-				throw new Error(`CLAUDE_CONFIG_DIR path is not a valid directory: ${firstPath}`);
-			}
-			return firstPath;
-		}
-	}
-
-	// Prefer the new default path (XDG config directory) if it exists
-	const newDefaultPath = DEFAULT_CLAUDE_CONFIG_PATH;
-	if (isDirectorySync(newDefaultPath)) {
-		return newDefaultPath;
-	}
-
-	// Fall back to the old default path ~/.claude for backward compatibility
-	const oldDefaultPath = path.join(USER_HOME_DIR, DEFAULT_CLAUDE_CODE_PATH);
-	if (isDirectorySync(oldDefaultPath)) {
-		return oldDefaultPath;
-	}
-
-	// If neither exists, return the old default for backward compatibility
-	return oldDefaultPath;
 }
 
 /**
@@ -1180,68 +1144,6 @@ if (import.meta.vitest != null) {
 		it('pads single digit months and days', () => {
 			expect(formatDateCompact('2024-01-05T00:00:00Z')).toBe('2024\n01-05');
 			expect(formatDateCompact('2024-10-01T00:00:00Z')).toBe('2024\n10-01');
-		});
-	});
-
-	describe('getDefaultClaudePath', () => {
-		afterEach(() => {
-		// Clean up any environment variable mocks
-			vi.unstubAllEnvs();
-		});
-
-		it('returns CLAUDE_CONFIG_DIR when environment variable is set', async () => {
-			await using fixture = await createFixture({
-				projects: {},
-			});
-
-			// Use vitest's environment variable stubbing
-			vi.stubEnv('CLAUDE_CONFIG_DIR', fixture.path);
-
-			expect(getDefaultClaudePath()).toBe(fixture.path);
-		});
-
-		it('returns default path when CLAUDE_CONFIG_DIR is not set', () => {
-		// Explicitly ensure the environment variable is not set
-		// Use undefined to indicate the env var should not be set
-			vi.stubEnv('CLAUDE_CONFIG_DIR', undefined as string | undefined);
-
-			// Test that it returns the default path (which can be either .config/claude or .claude)
-			const actualPath = getDefaultClaudePath();
-			expect(actualPath).toMatch(/\.(config\/claude|claude)$/);
-			expect(actualPath).toContain(homedir());
-		});
-
-		it('returns default path with trimmed CLAUDE_CONFIG_DIR', async () => {
-			await using fixture = await createFixture({
-				projects: {},
-			});
-
-			// Test with extra spaces using vitest env stubbing
-			vi.stubEnv('CLAUDE_CONFIG_DIR', `  ${fixture.path}  `);
-
-			expect(getDefaultClaudePath()).toBe(fixture.path);
-		});
-
-		it('throws an error when CLAUDE_CONFIG_DIR is not a directory', async () => {
-			await using fixture = await createFixture();
-			const nonExistentPath = join(fixture.path, 'not-a-directory');
-
-			vi.stubEnv('CLAUDE_CONFIG_DIR', nonExistentPath);
-
-			expect(() => getDefaultClaudePath()).toThrow(/CLAUDE_CONFIG_DIR path is not a valid directory/);
-		});
-
-		it('throws an error when CLAUDE_CONFIG_DIR does not exist', () => {
-			vi.stubEnv('CLAUDE_CONFIG_DIR', '/nonexistent/path/that/does/not/exist');
-
-			expect(() => getDefaultClaudePath()).toThrow(/CLAUDE_CONFIG_DIR path is not a valid directory/);
-		});
-
-		it('throws an error when default path does not exist', () => {
-		// Set to a non-existent path
-			vi.stubEnv('CLAUDE_CONFIG_DIR', '/nonexistent/path/.claude');
-
-			expect(() => getDefaultClaudePath()).toThrow(/CLAUDE_CONFIG_DIR path is not a valid directory/);
 		});
 	});
 
@@ -3663,45 +3565,6 @@ if (import.meta.vitest != null) {
 					expect(sessions.length).toBe(1);
 				}
 			});
-		});
-	});
-
-	describe('getDefaultClaudePath (deprecated)', () => {
-		afterEach(() => {
-			vi.unstubAllEnvs();
-		});
-
-		it('uses environment variable when set', async () => {
-			await using fixture = await createFixture({
-				projects: {},
-			});
-
-			vi.stubEnv('CLAUDE_CONFIG_DIR', fixture.path);
-
-			expect(getDefaultClaudePath()).toBe(fixture.path);
-		});
-
-		it('prefers new default path over old when both exist', async () => {
-			vi.stubEnv('CLAUDE_CONFIG_DIR', '');
-
-			// In CI environment, both paths are created, so it should prefer new one
-			const result = getDefaultClaudePath();
-			// Should contain either the new path or old path
-			expect(typeof result).toBe('string');
-			expect(result.length).toBeGreaterThan(0);
-		});
-
-		it('falls back to first environment path when multiple provided', async () => {
-			await using fixture1 = await createFixture({
-				projects: {},
-			});
-			await using fixture2 = await createFixture({
-				projects: {},
-			});
-
-			vi.stubEnv('CLAUDE_CONFIG_DIR', `${fixture1.path},${fixture2.path}`);
-
-			expect(path.resolve(getDefaultClaudePath())).toBe(path.resolve(fixture1.path));
 		});
 	});
 
