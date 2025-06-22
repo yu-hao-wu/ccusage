@@ -96,7 +96,7 @@ The tool automatically detects and aggregates data from both locations for compa
 
 ## Acknowledgments
 
-Thanks to [@milliondev](https://note.com/milliondev) for the [original concept and approach](https://note.com/milliondev/n/n872c1c5b3ed8) to Claude Code usage analysis.
+Thanks to [@milliondev](https://note.com/milliondev) for the [original concept and approach](https://note.com/milliondev/n/n1d018da2d769) to Claude Code usage analysis.
 
 ## Getting Started
 
