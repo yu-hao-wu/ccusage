@@ -39,7 +39,8 @@ async function updateApiIndex() {
 		}
 
 		await writeFile(apiIndexPath, content);
-		console.error('✅ Updated API index with module descriptions');
+		// eslint-disable-next-line no-console
+		console.log('✅ Updated API index with module descriptions');
 	}
 	catch (error) {
 		console.error('❌ Failed to update API index:', error);
@@ -66,7 +67,8 @@ ${noteText}`;
 		}
 
 		await writeFile(constsIndexPath, content);
-		console.error('✅ Updated constants page with disclaimer');
+		// eslint-disable-next-line no-console
+		console.log('✅ Updated constants page with disclaimer');
 	}
 	catch (error) {
 		console.error('❌ Failed to update constants page:', error);
