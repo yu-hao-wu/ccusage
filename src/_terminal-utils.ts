@@ -22,6 +22,7 @@ export class TerminalManager {
 	 */
 	hideCursor(): void {
 		if (!this.cursorHidden && this.stream.isTTY) {
+			// Only hide cursor in TTY environments to prevent issues with non-interactive streams
 			this.stream.write(ansiEscapes.cursorHide);
 			this.cursorHidden = true;
 		}
@@ -44,6 +45,7 @@ export class TerminalManager {
 	 */
 	clearScreen(): void {
 		if (this.stream.isTTY) {
+			// Only clear screen in TTY environments to prevent issues with non-interactive streams
 			this.stream.write(ansiEscapes.clearScreen);
 			this.stream.write(ansiEscapes.cursorTo(0, 0));
 		}
