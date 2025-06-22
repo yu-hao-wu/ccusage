@@ -6,4 +6,7 @@ export default ryoppippi({
 	typescript: {
 		tsconfigPath: './tsconfig.json',
 	},
+	ignores: [
+		'docs/**',
+	],
 });
