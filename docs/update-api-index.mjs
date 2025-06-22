@@ -33,9 +33,8 @@ async function updateApiIndex() {
 				linkPath = 'consts/index.md';
 			}
 
-			const oldPattern = `| [${module}](${linkPath}) | - |`;
-			const newPattern = `| [${module}](${linkPath}) | ${description} |`;
-			content = content.replace(oldPattern, newPattern);
+			const oldPattern = new RegExp(`\\|\\s*\\[${module}\\]\\(${linkPath}\\)\\s*\\|\\s*-\\s*\\|`, 'g');
+			content = content.replace(oldPattern, `| [${module}](${linkPath}) | ${description} |`);
 		}
 
 		await writeFile(apiIndexPath, content);
