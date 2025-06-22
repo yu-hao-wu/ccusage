@@ -49,7 +49,8 @@
       "name": "@ccusage/docs",
       "version": "15.0.0",
       "devDependencies": {
-        "fast-glob": "^3.3.3",
+        "@types/bun": "^1.2.17",
+        "tinyglobby": "^0.2.14",
         "typedoc": "^0.28.5",
         "typedoc-plugin-markdown": "^4.6.4",
         "typedoc-vitepress-theme": "^1.1.2",
