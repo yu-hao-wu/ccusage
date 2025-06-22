@@ -84,12 +84,6 @@ export const createProjectPath = (value: string): ProjectPath => projectPathSche
 export const createVersion = (value: string): Version => versionSchema.parse(value);
 
 /**
- * Legacy schema for backward compatibility
- * @deprecated Use filterDateSchema instead for better type safety
- */
-export const dateSchema = z.string().regex(/^\d{8}$/, 'Date must be in YYYYMMDD format');
-
-/**
  * Available cost calculation modes
  * - auto: Use pre-calculated costs when available, otherwise calculate from tokens
  * - calculate: Always calculate costs from token counts using model pricing

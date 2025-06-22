@@ -12,7 +12,7 @@ import path from 'node:path';
 import { createFixture } from 'fs-fixture';
 import { glob } from 'tinyglobby';
 import { CLAUDE_PROJECTS_DIR_NAME, DEBUG_MATCH_THRESHOLD_PERCENT, USAGE_DATA_GLOB_PATTERN } from './_consts.ts';
-import { getDefaultClaudePath, usageDataSchema } from './data-loader.ts';
+import { getClaudePaths, usageDataSchema } from './data-loader.ts';
 import { logger } from './logger.ts';
 import { PricingFetcher } from './pricing-fetcher.ts';
 
@@ -73,7 +73,17 @@ type MismatchStats = {
 export async function detectMismatches(
 	claudePath?: string,
 ): Promise<MismatchStats> {
-	const claudeDir = claudePath ?? path.join(getDefaultClaudePath(), CLAUDE_PROJECTS_DIR_NAME);
+	let claudeDir: string;
+	if (claudePath != null && claudePath !== '') {
+		claudeDir = claudePath;
+	}
+	else {
+		const paths = getClaudePaths();
+		if (paths.length === 0) {
+			throw new Error('No valid Claude data directory found');
+		}
+		claudeDir = path.join(paths[0]!, CLAUDE_PROJECTS_DIR_NAME);
+	}
 	const files = await glob([USAGE_DATA_GLOB_PATTERN], {
 		cwd: claudeDir,
 		absolute: true,

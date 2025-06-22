@@ -19,9 +19,9 @@ import { Hono } from 'hono/tiny';
 import { z } from 'zod';
 
 import { name, version } from '../package.json';
-import { dateSchema } from './_types.ts';
+import { filterDateSchema } from './_types.ts';
 import {
-	getDefaultClaudePath,
+	getClaudePaths,
 	loadDailyUsageData,
 	loadMonthlyUsageData,
 	loadSessionBlockData,
@@ -30,7 +30,13 @@ import {
 
 /** Default options for the MCP server */
 const defaultOptions = {
-	claudePath: getDefaultClaudePath(),
+	claudePath: (() => {
+		const paths = getClaudePaths();
+		if (paths.length === 0) {
+			throw new Error('No valid Claude path found. Ensure getClaudePaths() returns at least one valid path.');
+		}
+		return paths[0];
+	})(),
 } as const satisfies LoadOptions;
 
 /**
@@ -51,8 +57,8 @@ export function createMcpServer({
 
 	// Define the schema for tool parameters
 	const parametersZodSchema = {
-		since: dateSchema.optional(),
-		until: dateSchema.optional(),
+		since: filterDateSchema.optional(),
+		until: filterDateSchema.optional(),
 		mode: z.enum(['auto', 'calculate', 'display']).default('auto').optional(),
 	};
 
