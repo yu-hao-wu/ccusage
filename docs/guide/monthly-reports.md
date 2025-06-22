@@ -234,4 +234,4 @@ After analyzing monthly trends, consider:
 
 1. [Session Reports](/guide/session-reports) to identify high-cost conversations
 2. [Live Monitoring](/guide/live-monitoring) to track real-time usage
-3. [Custom Scripts](/examples/custom-scripts) for automated analysis
+3. [Library Usage](/guide/library-usage) for programmatic analysis
