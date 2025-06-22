@@ -145,6 +145,24 @@ const blocksResponseSchema = {
 	blocks: z.array(blockUsageSchema),
 };
 
+// Type for structured content to avoid repetitive casting
+type StructuredContent = { [x: string]: unknown };
+
+/**
+ * Helper function to transform usage data with totals into JSON output format
+ */
+function transformUsageDataWithTotals<T>(
+	data: T[],
+	totals: ReturnType<typeof calculateTotals>,
+	mapper: (item: T) => any,
+	key: string,
+): { [K in string]: any } & { totals: ReturnType<typeof createTotalsObject> } {
+	return {
+		[key]: data.map(mapper),
+		totals: createTotalsObject(totals),
+	};
+}
+
 /** Default options for the MCP server */
 const defaultOptions = {
 	claudePath: (() => {
@@ -192,8 +210,10 @@ export function createMcpServer({
 
 			// Transform data to match CLI JSON output format
 			const totals = calculateTotals(dailyData);
-			const jsonOutput = {
-				daily: dailyData.map(data => ({
+			const jsonOutput = transformUsageDataWithTotals(
+				dailyData,
+				totals,
+				data => ({
 					date: data.date,
 					inputTokens: data.inputTokens,
 					outputTokens: data.outputTokens,
@@ -203,9 +223,9 @@ export function createMcpServer({
 					totalCost: data.totalCost,
 					modelsUsed: data.modelsUsed,
 					modelBreakdowns: data.modelBreakdowns,
-				})),
-				totals: createTotalsObject(totals),
-			};
+				}),
+				'daily',
+			);
 
 			return {
 				content: [
@@ -214,7 +234,7 @@ export function createMcpServer({
 						text: JSON.stringify(jsonOutput, null, 2),
 					},
 				],
-				structuredContent: jsonOutput as unknown as { [x: string]: unknown },
+				structuredContent: jsonOutput as StructuredContent,
 			};
 		},
 	);
@@ -232,8 +252,10 @@ export function createMcpServer({
 
 			// Transform data to match CLI JSON output format
 			const totals = calculateTotals(sessionData);
-			const jsonOutput = {
-				sessions: sessionData.map(data => ({
+			const jsonOutput = transformUsageDataWithTotals(
+				sessionData,
+				totals,
+				data => ({
 					sessionId: data.sessionId,
 					inputTokens: data.inputTokens,
 					outputTokens: data.outputTokens,
@@ -244,9 +266,9 @@ export function createMcpServer({
 					lastActivity: data.lastActivity,
 					modelsUsed: data.modelsUsed,
 					modelBreakdowns: data.modelBreakdowns,
-				})),
-				totals: createTotalsObject(totals),
-			};
+				}),
+				'sessions',
+			);
 
 			return {
 				content: [
@@ -255,7 +277,7 @@ export function createMcpServer({
 						text: JSON.stringify(jsonOutput, null, 2),
 					},
 				],
-				structuredContent: jsonOutput as unknown as { [x: string]: unknown },
+				structuredContent: jsonOutput as StructuredContent,
 			};
 		},
 	);
@@ -273,8 +295,10 @@ export function createMcpServer({
 
 			// Transform data to match CLI JSON output format
 			const totals = calculateTotals(monthlyData);
-			const jsonOutput = {
-				monthly: monthlyData.map(data => ({
+			const jsonOutput = transformUsageDataWithTotals(
+				monthlyData,
+				totals,
+				data => ({
 					month: data.month,
 					inputTokens: data.inputTokens,
 					outputTokens: data.outputTokens,
@@ -284,9 +308,9 @@ export function createMcpServer({
 					totalCost: data.totalCost,
 					modelsUsed: data.modelsUsed,
 					modelBreakdowns: data.modelBreakdowns,
-				})),
-				totals: createTotalsObject(totals),
-			};
+				}),
+				'monthly',
+			);
 
 			return {
 				content: [
@@ -295,7 +319,7 @@ export function createMcpServer({
 						text: JSON.stringify(jsonOutput, null, 2),
 					},
 				],
-				structuredContent: jsonOutput as unknown as { [x: string]: unknown },
+				structuredContent: jsonOutput as StructuredContent,
 			};
 		},
 	);
@@ -341,7 +365,7 @@ export function createMcpServer({
 						text: JSON.stringify(jsonOutput, null, 2),
 					},
 				],
-				structuredContent: jsonOutput as unknown as { [x: string]: unknown },
+				structuredContent: jsonOutput as StructuredContent,
 			};
 		},
 	);
