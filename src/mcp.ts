@@ -98,7 +98,7 @@ const blockUsageSchema = z.object({
 	costUSD: z.number(),
 	models: z.array(z.string()),
 	burnRate: z.number().nullable(),
-	projection: z.any().nullable(),
+	projection: z.unknown().nullable(),
 });
 
 // Tool response schemas matching actual data format
