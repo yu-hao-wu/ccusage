@@ -150,7 +150,7 @@ export default withMermaid(
 					hour12: false,
 					timeZone: 'UTC',
 				},
-				
+
 			},
 		},
 
