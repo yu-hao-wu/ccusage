@@ -30,7 +30,13 @@ import {
 
 /** Default options for the MCP server */
 const defaultOptions = {
-	claudePath: getClaudePaths()[0] ?? '',
+	claudePath: (() => {
+		const paths = getClaudePaths();
+		if (paths.length === 0) {
+			throw new Error('No valid Claude path found. Ensure getClaudePaths() returns at least one valid path.');
+		}
+		return paths[0];
+	})(),
 } as const satisfies LoadOptions;
 
 /**
