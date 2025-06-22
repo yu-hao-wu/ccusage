@@ -388,8 +388,6 @@ export function renderCompactLiveDisplay(
 
 // In-source testing
 if (import.meta.vitest != null) {
-	const { describe, it, expect } = import.meta.vitest;
-
 	describe('formatTokensShort', () => {
 		it('should format numbers under 1000 as-is', () => {
 			expect(formatTokensShort(999)).toBe('999');
