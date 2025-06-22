@@ -95,7 +95,11 @@ export async function startLiveMonitoring(config: LiveMonitoringConfig): Promise
 		while (!abortController.signal.aborted) {
 			// Get active block with lightweight refresh
 			const activeBlock = await monitor.getActiveBlock();
-			monitor.clearCache(); // Force reload for next refresh
+			/*
+       * Force reload for next refresh. This is not efficient.
+       * TODO: debug the LiveMonitor.getActiveBlock() is not working
+       */
+			monitor.clearCache();
 
 			if (activeBlock == null) {
 				terminal.clearScreen();
