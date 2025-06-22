@@ -17,9 +17,11 @@ import type { SessionBlock } from '../_session-blocks.ts';
 import type { CostMode, SortOrder } from '../_types.ts';
 import process from 'node:process';
 import { delay } from '@jsr/std__async/delay';
+import * as ansiEscapes from 'ansi-escapes';
 import pc from 'picocolors';
 import prettyMs from 'pretty-ms';
 import stringWidth from 'string-width';
+import { MIN_RENDER_INTERVAL_MS } from '../_consts.ts';
 import { LiveMonitor } from '../_live-monitor.ts';
 import { calculateBurnRate, projectBlockUsage } from '../_session-blocks.ts';
 import { centerText, createProgressBar, TerminalManager } from '../_terminal-utils.ts';
@@ -37,6 +39,26 @@ export type LiveMonitoringConfig = {
 	mode: CostMode;
 	order: SortOrder;
 };
+
+/**
+ * Delay with AbortSignal support and graceful error handling
+ * @param ms - Milliseconds to delay
+ * @param signal - AbortSignal to cancel the delay
+ * @throws {Error} - Rethrows non-abort errors
+ */
+async function delayWithAbort(ms: number, signal: AbortSignal): Promise<void> {
+	try {
+		await delay(ms, { signal });
+	}
+	catch (error) {
+		if ((error instanceof DOMException || error instanceof Error) && error.name === 'AbortError') {
+			// Re-throw abort errors to allow caller to handle graceful shutdown
+			throw error;
+		}
+		// Re-throw other errors
+		throw error;
+	}
+}
 
 /**
  * Format token counts with K suffix for display
@@ -64,6 +86,7 @@ const DETAIL_COLUMN_WIDTHS = {
 export async function startLiveMonitoring(config: LiveMonitoringConfig): Promise<void> {
 	const terminal = new TerminalManager();
 	const abortController = new AbortController();
+	let lastRenderTime = 0;
 
 	// Setup graceful shutdown
 	const cleanup = (): void => {
@@ -80,7 +103,14 @@ export async function startLiveMonitoring(config: LiveMonitoringConfig): Promise
 	process.on('SIGINT', cleanup);
 	process.on('SIGTERM', cleanup);
 
-	// Hide cursor for cleaner display
+	// Setup terminal for optimal TUI performance
+	terminal.enterAlternateScreen();
+	terminal.enableSyncMode();
+
+	// Initial clear
+	terminal.clearScreen();
+
+	// Hide cursor after alternate screen and clear
 	terminal.hideCursor();
 
 	// Create live monitor with efficient data loading
@@ -93,6 +123,22 @@ export async function startLiveMonitoring(config: LiveMonitoringConfig): Promise
 
 	try {
 		while (!abortController.signal.aborted) {
+			const now = Date.now();
+			const timeSinceLastRender = now - lastRenderTime;
+
+			// Skip render if too soon (frame rate limiting)
+			if (timeSinceLastRender < MIN_RENDER_INTERVAL_MS) {
+				try {
+					await delayWithAbort(MIN_RENDER_INTERVAL_MS - timeSinceLastRender, abortController.signal);
+				}
+				catch (error) {
+					if ((error instanceof DOMException || error instanceof Error) && error.name === 'AbortError') {
+						break; // Graceful shutdown
+					}
+					throw error;
+				}
+				continue;
+			}
 			// Get active block with lightweight refresh
 			const activeBlock = await monitor.getActiveBlock();
 			/*
@@ -102,10 +148,16 @@ export async function startLiveMonitoring(config: LiveMonitoringConfig): Promise
 			monitor.clearCache();
 
 			if (activeBlock == null) {
-				terminal.clearScreen();
+				// Use cursor positioning instead of clearing entire screen
+				terminal.startBuffering();
+				terminal.write(ansiEscapes.cursorTo(0, 0));
+				terminal.write(ansiEscapes.eraseDown);
 				terminal.write(pc.yellow('No active session block found. Waiting...\n'));
+				// Ensure cursor stays hidden
+				terminal.write(ansiEscapes.cursorHide);
+				terminal.flush();
 				try {
-					await delay(config.refreshInterval, { signal: abortController.signal });
+					await delayWithAbort(config.refreshInterval, abortController.signal);
 				}
 				catch (error) {
 					if ((error instanceof DOMException || error instanceof Error) && error.name === 'AbortError') {
@@ -116,13 +168,20 @@ export async function startLiveMonitoring(config: LiveMonitoringConfig): Promise
 				continue;
 			}
 
-			// Clear screen and render
-			terminal.clearScreen();
+			// Render with synchronized updates for reduced flicker
+			terminal.startBuffering();
+			// Move cursor to home and clear screen content
+			terminal.write(ansiEscapes.cursorTo(0, 0));
+			terminal.write(ansiEscapes.eraseDown);
 			renderLiveDisplay(terminal, activeBlock, config);
+			// Ensure cursor stays hidden
+			terminal.write(ansiEscapes.cursorHide);
+			terminal.flush();
+			lastRenderTime = Date.now();
 
 			// Wait before next refresh
 			try {
-				await delay(config.refreshInterval, { signal: abortController.signal });
+				await delayWithAbort(config.refreshInterval, abortController.signal);
 			}
 			catch (error) {
 				if ((error instanceof DOMException || error instanceof Error) && error.name === 'AbortError') {
@@ -137,16 +196,14 @@ export async function startLiveMonitoring(config: LiveMonitoringConfig): Promise
 			// Normal graceful shutdown, don't log as error
 			return;
 		}
+		terminal.startBuffering();
 		terminal.clearScreen();
 		const errorMessage = error instanceof Error ? error.message : String(error);
 		terminal.write(pc.red(`Error: ${errorMessage}\n`));
+		terminal.flush();
 		logger.error(`Live monitoring error: ${errorMessage}`);
-		try {
-			await delay(config.refreshInterval, { signal: abortController.signal });
-		}
-		catch {
-			// Ignore abort during error recovery
-		}
+		// Ignore abort during error recovery
+		await delayWithAbort(config.refreshInterval, abortController.signal).catch(() => {});
 	}
 }
 
@@ -168,8 +225,7 @@ function renderLiveDisplay(terminal: TerminalManager, block: SessionBlock, confi
 		return;
 	}
 
-	// Clear screen and calculate layout
-	terminal.clearScreen();
+	// Don't clear here - it's handled by the caller
 
 	// Calculate box dimensions - use full width with minimal margins
 	const boxWidth = Math.min(120, width - 2); // Use almost full width, leaving 1 char margin on each side
@@ -225,7 +281,7 @@ function renderLiveDisplay(terminal: TerminalManager, block: SessionBlock, confi
 	// Fixed column positions - aligned with proper spacing
 	const pad1 = ' '.repeat(Math.max(0, DETAIL_COLUMN_WIDTHS.col1 - col1Visible));
 	const pad2 = ' '.repeat(Math.max(0, DETAIL_COLUMN_WIDTHS.col2 - col2Visible));
-	const sessionDetails = `   ${col1}${pad1}${col2}${pad2}${col3}`;
+	const sessionDetails = `   ${col1}${pad1}${pad2}${col3}`;
 	const sessionDetailsPadded = sessionDetails + ' '.repeat(Math.max(0, boxWidth - 3 - stringWidth(sessionDetails)));
 	terminal.write(`${marginStr}│ ${sessionDetailsPadded}│\n`);
 	terminal.write(`${marginStr}│${' '.repeat(boxWidth - 2)}│\n`);
