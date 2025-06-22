@@ -55,6 +55,28 @@ export class PricingFetcher implements Disposable {
 	}
 
 	/**
+	 * Handles fallback to offline pricing when network fetch fails
+	 * @param originalError - The original error from the network fetch
+	 * @returns Map of model names to pricing information
+	 * @throws Error if both network fetch and fallback fail
+	 */
+	private async handleFallbackToCachedPricing(originalError: unknown): Promise<Map<string, ModelPricing>> {
+		logger.warn('Failed to fetch model pricing from LiteLLM, falling back to cached pricing data');
+		logger.debug('Fetch error details:', originalError);
+
+		try {
+			const fallbackPricing = await this.loadOfflinePricing();
+			logger.info(`Using cached pricing data for ${fallbackPricing.size} models`);
+			return fallbackPricing;
+		}
+		catch (fallbackError) {
+			logger.error('Failed to load cached pricing data as fallback:', fallbackError);
+			logger.error('Original fetch error:', originalError);
+			throw new Error('Could not fetch model pricing data and fallback data is unavailable');
+		}
+	}
+
+	/**
 	 * Ensures pricing data is loaded, either from cache or by fetching
 	 * Automatically falls back to offline mode if network fetch fails
 	 * @returns Map of model names to pricing information
@@ -96,22 +118,7 @@ export class PricingFetcher implements Disposable {
 			return pricing;
 		}
 		catch (error) {
-			// Fallback to offline mode when network fetch fails
-			logger.warn('Failed to fetch model pricing from LiteLLM, falling back to cached pricing data');
-			logger.debug('Fetch error details:', error);
-
-			try {
-				// Attempt to use pre-fetched pricing data as fallback
-				const fallbackPricing = await this.loadOfflinePricing();
-				logger.info(`Using cached pricing data for ${fallbackPricing.size} models`);
-				return fallbackPricing;
-			}
-			catch (fallbackError) {
-				// If even the fallback fails, log both errors and throw
-				logger.error('Failed to load cached pricing data as fallback:', fallbackError);
-				logger.error('Original fetch error:', error);
-				throw new Error('Could not fetch model pricing data and fallback data is unavailable');
-			}
+			return this.handleFallbackToCachedPricing(error);
 		}
 	}
 
