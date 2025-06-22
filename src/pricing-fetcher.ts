@@ -45,6 +45,16 @@ export class PricingFetcher implements Disposable {
 	}
 
 	/**
+	 * Loads offline pricing data from pre-fetched cache
+	 * @returns Map of model names to pricing information
+	 */
+	private async loadOfflinePricing(): Promise<Map<string, ModelPricing>> {
+		const pricing = new Map(Object.entries(await prefetchClaudePricing()));
+		this.cachedPricing = pricing;
+		return pricing;
+	}
+
+	/**
 	 * Ensures pricing data is loaded, either from cache or by fetching
 	 * Automatically falls back to offline mode if network fetch fails
 	 * @returns Map of model names to pricing information
@@ -56,9 +66,7 @@ export class PricingFetcher implements Disposable {
 
 		// If we're in offline mode, return pre-fetched data
 		if (this.offline) {
-			const pricing = new Map(Object.entries(await prefetchClaudePricing()));
-			this.cachedPricing = pricing;
-			return pricing;
+			return this.loadOfflinePricing();
 		}
 
 		try {
@@ -94,8 +102,7 @@ export class PricingFetcher implements Disposable {
 
 			try {
 				// Attempt to use pre-fetched pricing data as fallback
-				const fallbackPricing = new Map(Object.entries(await prefetchClaudePricing()));
-				this.cachedPricing = fallbackPricing;
+				const fallbackPricing = await this.loadOfflinePricing();
 				logger.info(`Using cached pricing data for ${fallbackPricing.size} models`);
 				return fallbackPricing;
 			}
