@@ -21,6 +21,11 @@ import { z } from 'zod';
 import { name, version } from '../package.json';
 import { filterDateSchema } from './_types.ts';
 import {
+	calculateTotals,
+	createTotalsObject,
+	getTotalTokens,
+} from './calculate-cost.ts';
+import {
 	getClaudePaths,
 	loadDailyUsageData,
 	loadMonthlyUsageData,
@@ -100,39 +105,39 @@ const blockUsageSchema = z.object({
 const dailyResponseSchema = {
 	daily: z.array(dailyUsageSchema),
 	totals: z.object({
-		totalInputTokens: z.number(),
-		totalOutputTokens: z.number(),
+		totalInputTokens: z.number().optional(),
+		totalOutputTokens: z.number().optional(),
 		totalCacheCreationTokens: z.number().optional(),
 		totalCacheReadTokens: z.number().optional(),
-		totalTokens: z.number(),
-		totalCost: z.number(),
-		modelsUsed: z.array(z.string()),
+		totalTokens: z.number().optional(),
+		totalCost: z.number().optional(),
+		modelsUsed: z.array(z.string()).optional(),
 	}),
 };
 
 const sessionResponseSchema = {
 	sessions: z.array(sessionUsageSchema),
 	totals: z.object({
-		totalInputTokens: z.number(),
-		totalOutputTokens: z.number(),
+		totalInputTokens: z.number().optional(),
+		totalOutputTokens: z.number().optional(),
 		totalCacheCreationTokens: z.number().optional(),
 		totalCacheReadTokens: z.number().optional(),
-		totalTokens: z.number(),
-		totalCost: z.number(),
-		modelsUsed: z.array(z.string()),
+		totalTokens: z.number().optional(),
+		totalCost: z.number().optional(),
+		modelsUsed: z.array(z.string()).optional(),
 	}),
 };
 
 const monthlyResponseSchema = {
 	monthly: z.array(monthlyUsageSchema),
 	totals: z.object({
-		totalInputTokens: z.number(),
-		totalOutputTokens: z.number(),
+		totalInputTokens: z.number().optional(),
+		totalOutputTokens: z.number().optional(),
 		totalCacheCreationTokens: z.number().optional(),
 		totalCacheReadTokens: z.number().optional(),
-		totalTokens: z.number(),
-		totalCost: z.number(),
-		modelsUsed: z.array(z.string()),
+		totalTokens: z.number().optional(),
+		totalCost: z.number().optional(),
+		modelsUsed: z.array(z.string()).optional(),
 	}),
 };
 
@@ -184,14 +189,32 @@ export function createMcpServer({
 		},
 		async (args) => {
 			const dailyData = await loadDailyUsageData({ ...args, claudePath });
+
+			// Transform data to match CLI JSON output format
+			const totals = calculateTotals(dailyData);
+			const jsonOutput = {
+				daily: dailyData.map(data => ({
+					date: data.date,
+					inputTokens: data.inputTokens,
+					outputTokens: data.outputTokens,
+					cacheCreationTokens: data.cacheCreationTokens,
+					cacheReadTokens: data.cacheReadTokens,
+					totalTokens: getTotalTokens(data),
+					totalCost: data.totalCost,
+					modelsUsed: data.modelsUsed,
+					modelBreakdowns: data.modelBreakdowns,
+				})),
+				totals: createTotalsObject(totals),
+			};
+
 			return {
 				content: [
 					{
 						type: 'text',
-						text: JSON.stringify(dailyData, null, 2),
+						text: JSON.stringify(jsonOutput, null, 2),
 					},
 				],
-				structuredContent: dailyData as unknown as { [x: string]: unknown },
+				structuredContent: jsonOutput as unknown as { [x: string]: unknown },
 			};
 		},
 	);
@@ -206,14 +229,33 @@ export function createMcpServer({
 		},
 		async (args) => {
 			const sessionData = await loadSessionData({ ...args, claudePath });
+
+			// Transform data to match CLI JSON output format
+			const totals = calculateTotals(sessionData);
+			const jsonOutput = {
+				sessions: sessionData.map(data => ({
+					sessionId: data.sessionId,
+					inputTokens: data.inputTokens,
+					outputTokens: data.outputTokens,
+					cacheCreationTokens: data.cacheCreationTokens,
+					cacheReadTokens: data.cacheReadTokens,
+					totalTokens: getTotalTokens(data),
+					totalCost: data.totalCost,
+					lastActivity: data.lastActivity,
+					modelsUsed: data.modelsUsed,
+					modelBreakdowns: data.modelBreakdowns,
+				})),
+				totals: createTotalsObject(totals),
+			};
+
 			return {
 				content: [
 					{
 						type: 'text',
-						text: JSON.stringify(sessionData, null, 2),
+						text: JSON.stringify(jsonOutput, null, 2),
 					},
 				],
-				structuredContent: sessionData as unknown as { [x: string]: unknown },
+				structuredContent: jsonOutput as unknown as { [x: string]: unknown },
 			};
 		},
 	);
@@ -228,14 +270,32 @@ export function createMcpServer({
 		},
 		async (args) => {
 			const monthlyData = await loadMonthlyUsageData({ ...args, claudePath });
+
+			// Transform data to match CLI JSON output format
+			const totals = calculateTotals(monthlyData);
+			const jsonOutput = {
+				monthly: monthlyData.map(data => ({
+					month: data.month,
+					inputTokens: data.inputTokens,
+					outputTokens: data.outputTokens,
+					cacheCreationTokens: data.cacheCreationTokens,
+					cacheReadTokens: data.cacheReadTokens,
+					totalTokens: getTotalTokens(data),
+					totalCost: data.totalCost,
+					modelsUsed: data.modelsUsed,
+					modelBreakdowns: data.modelBreakdowns,
+				})),
+				totals: createTotalsObject(totals),
+			};
+
 			return {
 				content: [
 					{
 						type: 'text',
-						text: JSON.stringify(monthlyData, null, 2),
+						text: JSON.stringify(jsonOutput, null, 2),
 					},
 				],
-				structuredContent: monthlyData as unknown as { [x: string]: unknown },
+				structuredContent: jsonOutput as unknown as { [x: string]: unknown },
 			};
 		},
 	);
@@ -249,15 +309,39 @@ export function createMcpServer({
 			outputSchema: blocksResponseSchema,
 		},
 		async (args) => {
-			const blocksData = await loadSessionBlockData({ ...args, claudePath });
+			const blocks = await loadSessionBlockData({ ...args, claudePath });
+
+			// Transform data to match CLI JSON output format
+			const jsonOutput = {
+				blocks: blocks.map((block) => {
+					return {
+						id: block.id,
+						startTime: block.startTime.toISOString(),
+						endTime: block.endTime.toISOString(),
+						actualEndTime: block.actualEndTime?.toISOString() ?? null,
+						isActive: block.isActive,
+						isGap: block.isGap ?? false,
+						entries: block.entries.length,
+						tokenCounts: block.tokenCounts,
+						totalTokens:
+							block.tokenCounts.inputTokens
+							+ block.tokenCounts.outputTokens,
+						costUSD: block.costUSD,
+						models: block.models,
+						burnRate: null,
+						projection: null,
+					};
+				}),
+			};
+
 			return {
 				content: [
 					{
 						type: 'text',
-						text: JSON.stringify(blocksData, null, 2),
+						text: JSON.stringify(jsonOutput, null, 2),
 					},
 				],
-				structuredContent: blocksData as unknown as { [x: string]: unknown },
+				structuredContent: jsonOutput as unknown as { [x: string]: unknown },
 			};
 		},
 	);
@@ -394,7 +478,9 @@ if (import.meta.vitest != null) {
 				expect(Array.isArray((result as any).structuredContent.daily)).toBe(true);
 
 				const data = JSON.parse((result.content as any).at(0).text as string);
-				expect(Array.isArray(data)).toBe(true);
+				expect(data).toHaveProperty('daily');
+				expect(data).toHaveProperty('totals');
+				expect(Array.isArray(data.daily)).toBe(true);
 
 				await client.close();
 				await server.close();
@@ -440,7 +526,9 @@ if (import.meta.vitest != null) {
 				expect(Array.isArray((result as any).structuredContent.sessions)).toBe(true);
 
 				const data = JSON.parse((result.content as any)[0].text as string);
-				expect(Array.isArray(data)).toBe(true);
+				expect(data).toHaveProperty('sessions');
+				expect(data).toHaveProperty('totals');
+				expect(Array.isArray(data.sessions)).toBe(true);
 
 				await client.close();
 				await server.close();
@@ -480,7 +568,9 @@ if (import.meta.vitest != null) {
 				expect((result.content as any)[0]).toHaveProperty('text');
 
 				const data = JSON.parse((result.content as any)[0].text as string);
-				expect(Array.isArray(data)).toBe(true);
+				expect(data).toHaveProperty('monthly');
+				expect(data).toHaveProperty('totals');
+				expect(Array.isArray(data.monthly)).toBe(true);
 
 				await client.close();
 				await server.close();
@@ -520,7 +610,8 @@ if (import.meta.vitest != null) {
 				expect((result.content as any)[0]).toHaveProperty('text');
 
 				const data = JSON.parse((result.content as any)[0].text as string);
-				expect(Array.isArray(data)).toBe(true);
+				expect(data).toHaveProperty('blocks');
+				expect(Array.isArray(data.blocks)).toBe(true);
 
 				await client.close();
 				await server.close();
@@ -804,8 +895,10 @@ if (import.meta.vitest != null) {
 				expect((result.content as any)[0]).toHaveProperty('type', 'text');
 
 				const data = JSON.parse((result.content as any)[0].text as string);
-				expect(Array.isArray(data)).toBe(true);
-				expect(data).toHaveLength(0);
+				expect(data).toHaveProperty('daily');
+				expect(data).toHaveProperty('totals');
+				expect(Array.isArray(data.daily)).toBe(true);
+				expect(data.daily).toHaveLength(0);
 
 				await client.close();
 				await server.close();
@@ -836,9 +929,11 @@ if (import.meta.vitest != null) {
 				expect(result.content).toHaveLength(1);
 
 				const data = JSON.parse((result.content as any)[0].text as string);
-				expect(Array.isArray(data)).toBe(true);
+				expect(data).toHaveProperty('daily');
+				expect(data).toHaveProperty('totals');
+				expect(Array.isArray(data.daily)).toBe(true);
 				// Should still return data, as malformed lines are silently skipped
-				expect(data).toHaveLength(0);
+				expect(data.daily).toHaveLength(0);
 
 				await client.close();
 				await server.close();
@@ -865,8 +960,10 @@ if (import.meta.vitest != null) {
 				expect(result.content).toHaveLength(1);
 
 				const data = JSON.parse((result.content as any)[0].text as string);
-				expect(Array.isArray(data)).toBe(true);
-				expect(data).toHaveLength(0);
+				expect(data).toHaveProperty('daily');
+				expect(data).toHaveProperty('totals');
+				expect(Array.isArray(data.daily)).toBe(true);
+				expect(data.daily).toHaveLength(0);
 
 				await client.close();
 				await server.close();
@@ -908,16 +1005,20 @@ if (import.meta.vitest != null) {
 				expect(monthlyResult).toHaveProperty('content');
 				expect(blocksResult).toHaveProperty('content');
 
-				// Verify all responses are valid JSON arrays
+				// Verify all responses are valid JSON objects with expected structure
 				const dailyData = JSON.parse((dailyResult.content as any)[0].text as string);
 				const sessionData = JSON.parse((sessionResult.content as any)[0].text as string);
 				const monthlyData = JSON.parse((monthlyResult.content as any)[0].text as string);
 				const blocksData = JSON.parse((blocksResult.content as any)[0].text as string);
 
-				expect(Array.isArray(dailyData)).toBe(true);
-				expect(Array.isArray(sessionData)).toBe(true);
-				expect(Array.isArray(monthlyData)).toBe(true);
-				expect(Array.isArray(blocksData)).toBe(true);
+				expect(dailyData).toHaveProperty('daily');
+				expect(Array.isArray(dailyData.daily)).toBe(true);
+				expect(sessionData).toHaveProperty('sessions');
+				expect(Array.isArray(sessionData.sessions)).toBe(true);
+				expect(monthlyData).toHaveProperty('monthly');
+				expect(Array.isArray(monthlyData.monthly)).toBe(true);
+				expect(blocksData).toHaveProperty('blocks');
+				expect(Array.isArray(blocksData.blocks)).toBe(true);
 
 				await client.close();
 				await server.close();
