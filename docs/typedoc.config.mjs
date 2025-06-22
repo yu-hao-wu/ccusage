@@ -1,8 +1,8 @@
 // @ts-check
-import fg from 'fast-glob';
+import { globSync } from 'tinyglobby'
 
 const entryPoints = [
-	...fg.sync([
+	...globSync([
 		'../src/*.ts',
 		'!../src/**/*.test.ts', // Exclude test files
 		'!../src/_*.ts', // Exclude internal files with underscore prefix
