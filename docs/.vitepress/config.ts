@@ -80,6 +80,7 @@ export default withMermaid(defineConfig({
 					text: 'Community',
 					items: [
 						{ text: 'Related Projects', link: '/guide/related-projects' },
+						{ text: 'Sponsors', link: '/guide/sponsors' },
 					],
 				},
 			],
