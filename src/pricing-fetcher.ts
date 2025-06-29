@@ -9,6 +9,7 @@
  */
 
 import type { ModelPricing } from './_types.ts';
+import { Result } from '@praha/byethrow';
 import { LITELLM_PRICING_URL } from './_consts.ts';
 import { prefetchClaudePricing } from './_macro.ts' with { type: 'macro' };
 import { modelPricingSchema } from './_types.ts';
@@ -64,16 +65,20 @@ export class PricingFetcher implements Disposable {
 		logger.warn('Failed to fetch model pricing from LiteLLM, falling back to cached pricing data');
 		logger.debug('Fetch error details:', originalError);
 
-		try {
-			const fallbackPricing = await this.loadOfflinePricing();
+		const fallbackResult = Result.try({
+			try: async () => this.loadOfflinePricing(),
+			catch: error => error,
+		});
+
+		if (Result.isSuccess(fallbackResult)) {
+			const fallbackPricing = await fallbackResult.value;
 			logger.info(`Using cached pricing data for ${fallbackPricing.size} models`);
 			return fallbackPricing;
 		}
-		catch (fallbackError) {
-			logger.error('Failed to load cached pricing data as fallback:', fallbackError);
-			logger.error('Original fetch error:', originalError);
-			throw new Error('Could not fetch model pricing data and fallback data is unavailable');
-		}
+
+		logger.error('Failed to load cached pricing data as fallback:', fallbackResult.error);
+		logger.error('Original fetch error:', originalError);
+		throw new Error('Could not fetch model pricing data and fallback data is unavailable');
 	}
 
 	/**
@@ -91,35 +96,41 @@ export class PricingFetcher implements Disposable {
 			return this.loadOfflinePricing();
 		}
 
-		try {
-			logger.warn('Fetching latest model pricing from LiteLLM...');
-			const response = await fetch(LITELLM_PRICING_URL);
-			if (!response.ok) {
-				throw new Error(`Failed to fetch pricing data: ${response.statusText}`);
-			}
-
-			const data = await response.json();
-			const pricing = new Map<string, ModelPricing>();
-
-			for (const [modelName, modelData] of Object.entries(
-				data as Record<string, unknown>,
-			)) {
-				if (typeof modelData === 'object' && modelData !== null) {
-					const parsed = modelPricingSchema.safeParse(modelData);
-					if (parsed.success) {
-						pricing.set(modelName, parsed.data);
-					}
-					// Skip models that don't match our schema
+		const fetchResult = Result.try({
+			try: async () => {
+				logger.warn('Fetching latest model pricing from LiteLLM...');
+				const response = await fetch(LITELLM_PRICING_URL);
+				if (!response.ok) {
+					throw new Error(`Failed to fetch pricing data: ${response.statusText}`);
 				}
-			}
 
-			this.cachedPricing = pricing;
-			logger.info(`Loaded pricing for ${pricing.size} models`);
-			return pricing;
+				const data = await response.json();
+				const pricing = new Map<string, ModelPricing>();
+
+				for (const [modelName, modelData] of Object.entries(
+					data as Record<string, unknown>,
+				)) {
+					if (typeof modelData === 'object' && modelData !== null) {
+						const parsed = modelPricingSchema.safeParse(modelData);
+						if (parsed.success) {
+							pricing.set(modelName, parsed.data);
+						}
+						// Skip models that don't match our schema
+					}
+				}
+
+				this.cachedPricing = pricing;
+				logger.info(`Loaded pricing for ${pricing.size} models`);
+				return pricing;
+			},
+			catch: error => error,
+		});
+
+		if (Result.isSuccess(fetchResult)) {
+			return await fetchResult.value;
 		}
-		catch (error) {
-			return this.handleFallbackToCachedPricing(error);
-		}
+
+		return this.handleFallbackToCachedPricing(fetchResult.error);
 	}
 
 	/**
