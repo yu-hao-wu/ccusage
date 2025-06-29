@@ -663,11 +663,12 @@ export async function loadDailyUsageData(
 			.filter(line => line.length > 0);
 
 		for (const line of lines) {
-			const parseResult = Result.try({
+			const parseParser = Result.try({
 				try: () => JSON.parse(line) as unknown,
 				catch: () => new Error('Invalid JSON'),
 			});
 
+			const parseResult = parseParser();
 			if (Result.isFailure(parseResult)) {
 				// Skip invalid JSON lines
 				continue;
@@ -826,11 +827,12 @@ export async function loadSessionData(
 			.filter(line => line.length > 0);
 
 		for (const line of lines) {
-			const parseResult = Result.try({
+			const parseParser = Result.try({
 				try: () => JSON.parse(line) as unknown,
 				catch: () => new Error('Invalid JSON'),
 			});
 
+			const parseResult = parseParser();
 			if (Result.isFailure(parseResult)) {
 				// Skip invalid JSON lines
 				continue;
@@ -1055,11 +1057,12 @@ export async function loadSessionBlockData(
 			.filter(line => line.length > 0);
 
 		for (const line of lines) {
-			const parseResult = Result.try({
+			const parseParser = Result.try({
 				try: () => JSON.parse(line) as unknown,
 				catch: error => error,
 			});
 
+			const parseResult = parseParser();
 			if (Result.isFailure(parseResult)) {
 				// Skip invalid JSON lines but log for debugging purposes
 				logger.debug(`Skipping invalid JSON line in 5-hour blocks: ${parseResult.error instanceof Error ? parseResult.error.message : String(parseResult.error)}`);

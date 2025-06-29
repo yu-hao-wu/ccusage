@@ -98,21 +98,24 @@ export class LiveMonitor implements Disposable {
 				});
 
 				const fileResult = await fileReader();
-				const content = Result.isSuccess(fileResult)
-					? fileResult.value
-					: ''; // Skip files that can't be read
+				if (Result.isFailure(fileResult)) {
+					// Skip files that can't be read
+					continue;
+				}
 
+				const content = fileResult.value;
 				const lines = content
 					.trim()
 					.split('\n')
 					.filter(line => line.length > 0);
 
 				for (const line of lines) {
-					const parseResult = Result.try({
+					const parseParser = Result.try({
 						try: () => JSON.parse(line) as unknown,
 						catch: () => new Error('Invalid JSON'),
 					});
 
+					const parseResult = parseParser();
 					if (Result.isFailure(parseResult)) {
 						// Skip malformed lines
 						continue;

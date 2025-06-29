@@ -111,11 +111,12 @@ export async function detectMismatches(
 			.filter(line => line.length > 0);
 
 		for (const line of lines) {
-			const parseResult = Result.try({
+			const parseParser = Result.try({
 				try: () => JSON.parse(line) as unknown,
 				catch: () => new Error('Invalid JSON'),
 			});
 
+			const parseResult = parseParser();
 			if (Result.isFailure(parseResult)) {
 				continue;
 			}

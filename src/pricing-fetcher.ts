@@ -65,20 +65,21 @@ export class PricingFetcher implements Disposable {
 		logger.warn('Failed to fetch model pricing from LiteLLM, falling back to cached pricing data');
 		logger.debug('Fetch error details:', originalError);
 
-		const fallbackResult = Result.try({
+		const fallbackWrapper = Result.try({
 			try: async () => this.loadOfflinePricing(),
 			catch: error => error,
 		});
 
-		if (Result.isSuccess(fallbackResult)) {
-			const fallbackPricing = await fallbackResult.value;
-			logger.info(`Using cached pricing data for ${fallbackPricing.size} models`);
-			return fallbackPricing;
+		const fallbackResult = await fallbackWrapper();
+		if (Result.isFailure(fallbackResult)) {
+			logger.error('Failed to load cached pricing data as fallback:', fallbackResult.error);
+			logger.error('Original fetch error:', originalError);
+			throw new Error('Could not fetch model pricing data and fallback data is unavailable');
 		}
 
-		logger.error('Failed to load cached pricing data as fallback:', fallbackResult.error);
-		logger.error('Original fetch error:', originalError);
-		throw new Error('Could not fetch model pricing data and fallback data is unavailable');
+		const fallbackPricing = fallbackResult.value;
+		logger.info(`Using cached pricing data for ${fallbackPricing.size} models`);
+		return fallbackPricing;
 	}
 
 	/**
@@ -96,7 +97,7 @@ export class PricingFetcher implements Disposable {
 			return this.loadOfflinePricing();
 		}
 
-		const fetchResult = Result.try({
+		const fetchWrapper = Result.try({
 			try: async () => {
 				logger.warn('Fetching latest model pricing from LiteLLM...');
 				const response = await fetch(LITELLM_PRICING_URL);
@@ -126,11 +127,12 @@ export class PricingFetcher implements Disposable {
 			catch: error => error,
 		});
 
-		if (Result.isSuccess(fetchResult)) {
-			return await fetchResult.value;
+		const fetchResult = await fetchWrapper();
+		if (Result.isFailure(fetchResult)) {
+			return this.handleFallbackToCachedPricing(fetchResult.error);
 		}
 
-		return this.handleFallbackToCachedPricing(fetchResult.error);
+		return fetchResult.value;
 	}
 
 	/**
