@@ -92,11 +92,15 @@ export class LiveMonitor implements Disposable {
 			const sortedFiles = await sortFilesByTimestamp(filesToRead);
 
 			for (const file of sortedFiles) {
-				const content = await readFile(file, 'utf-8')
-					.catch(() => {
-						// Skip files that can't be read
-						return '';
-					});
+				const fileReader = Result.try({
+					try: async () => readFile(file, 'utf-8'),
+					catch: () => new Error('File read failed'),
+				});
+
+				const fileResult = await fileReader();
+				const content = Result.isSuccess(fileResult)
+					? fileResult.value
+					: ''; // Skip files that can't be read
 
 				const lines = content
 					.trim()
