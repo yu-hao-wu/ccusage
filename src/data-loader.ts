@@ -573,7 +573,7 @@ export async function calculateCostForEntry(
 	if (mode === 'calculate') {
 		// Always calculate from tokens
 		if (data.message.model != null) {
-			return fetcher.calculateCostFromTokens(data.message.usage, data.message.model);
+			return Result.unwrap(fetcher.calculateCostFromTokens(data.message.usage, data.message.model));
 		}
 		return 0;
 	}
@@ -585,7 +585,7 @@ export async function calculateCostForEntry(
 		}
 
 		if (data.message.model != null) {
-			return fetcher.calculateCostFromTokens(data.message.usage, data.message.model);
+			return Result.unwrap(fetcher.calculateCostFromTokens(data.message.usage, data.message.model));
 		}
 
 		return 0;
