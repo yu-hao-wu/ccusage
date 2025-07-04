@@ -5,7 +5,7 @@ Welcome to ccusage! This guide will help you get up and running with analyzing y
 ## Prerequisites
 
 - Claude Code installed and used (generates JSONL files)
-- Node.js 18+ or Bun runtime
+- Node.js 20+ or Bun runtime
 
 ## Quick Start
 
