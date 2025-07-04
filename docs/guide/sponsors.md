@@ -8,7 +8,7 @@ Check out these [47 Claude Code ProTips from Greg Baugues.](https://www.youtube.
 
 <p align="center">
     <a href="https://www.youtube.com/watch?v=TiNpzxoBPz0&lc=UgyVgQyOhfJJlheVMcB4AaABAg">
-        <img src="/claude_code_protips_thumbnail_v1.png" alt="47 Claude Code ProTips from Greg Baugues" width="400">
+        <img src="/claude_code_protips_thumbnail_v1.png" alt="47 Claude Code ProTips from Greg Baugues" width="600">
     </a>
 </p>
 
