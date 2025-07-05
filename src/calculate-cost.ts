@@ -8,6 +8,8 @@
  * @module calculate-cost
  */
 
+// Test comment for commit workflow verification
+
 import type { AggregatedTokenCounts } from './_token-utils.ts';
 import type { DailyUsage, MonthlyUsage, SessionUsage } from './data-loader.ts';
 import { getTotalTokens } from './_token-utils.ts';
